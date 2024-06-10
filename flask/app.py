@@ -51,41 +51,48 @@ def hello_world():
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
     logging.debug('POST request received at /generate-image')
-    data = request.json
+
+    data = request.get_json()
     logging.debug(f'Request data: {data}')
 
-    prompt = data.get('prompt')
-    if not prompt:
+    if not data or 'prompt' not in data:
+        logging.error('Prompt is required')
         return jsonify({'error': 'Prompt is required'}), 400
 
-    url = 'https://api.openai.com/v1/images/generations'
+    prompt = data['prompt']
 
+    # Refined prompt with more details
+    refined_prompt = f"High-quality, detailed image of {prompt}, 4K resolution, photorealistic"
+
+    url = 'https://api.openai.com/v1/images/generations'
     headers = {
         'Authorization': f'Bearer {OPENAI_API_KEY}',
+        'Content-Type': 'application/json'
     }
     json_data = {
-        'prompt': prompt,
+        'prompt': refined_prompt,
         'n': 1,
-        'size': '1024x1024'
+        'size': '1920x1080'
     }
-    proxy = {
+    proxies = {
         'http': PROXY_URL,
         'https': PROXY_URL,
-    }
+    } if PROXY_URL else None
+
     try:
-        response = requests.post(url, headers=headers, json=json_data, proxies=proxy)
+        response = requests.post(url, headers=headers, json=json_data, proxies=proxies)
         response.raise_for_status()
+        image_url = response.json()['data'][0]['url']
     except requests.exceptions.RequestException as e:
         logging.error(f'Error generating image: {e}')
         return jsonify({'error': 'Failed to generate image'}), 500
-
-    image_url = response.json()['data'][0]['url']
 
     new_image = GeneratedImage(prompt=prompt, image_url=image_url)
     session.add(new_image)
     session.commit()
 
     return jsonify({'image_url': image_url})
+
 
 
 if __name__ == '__main__':
