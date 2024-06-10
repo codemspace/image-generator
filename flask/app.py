@@ -71,8 +71,8 @@ def generate_image():
     }
     json_data = {
         'prompt': refined_prompt,
-        'n': 1,
-        'size': '1920x1080'
+        'n': 4,  # Number of images to generate
+        'size': '1024x1024'
     }
     proxies = {
         'http': PROXY_URL,
@@ -82,17 +82,16 @@ def generate_image():
     try:
         response = requests.post(url, headers=headers, json=json_data, proxies=proxies)
         response.raise_for_status()
-        image_url = response.json()['data'][0]['url']
+        image_urls = [item['url'] for item in response.json()['data']]
     except requests.exceptions.RequestException as e:
         logging.error(f'Error generating image: {e}')
         return jsonify({'error': 'Failed to generate image'}), 500
 
-    new_image = GeneratedImage(prompt=prompt, image_url=image_url)
-    session.add(new_image)
+    new_images = [GeneratedImage(prompt=prompt, image_url=url) for url in image_urls]
+    session.add_all(new_images)
     session.commit()
 
-    return jsonify({'image_url': image_url})
-
+    return jsonify({'image_urls': image_urls})
 
 
 if __name__ == '__main__':
