@@ -1,0 +1,13 @@
+# virtual environment
+venv
+
+# PyCache
+**/__pycache__/
+
+# Client
+dist
+
+# environment value
+.env
+
+/.idea
